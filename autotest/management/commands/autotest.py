@@ -8,9 +8,11 @@ import json
 import atexit
 import subprocess as sp
 
+from django.apps import apps
 from django.utils import autoreload
 from django.test.utils import setup_test_environment, teardown_test_environment
 from django.core.management.commands.test import Command as BaseCommand
+
 
 #
 # Monkey patch to test django is still working before reloading (no inode support yet)
@@ -18,13 +20,13 @@ from django.core.management.commands.test import Command as BaseCommand
 orig_has_changed = autoreload.code_changed
 def new_has_changed():
     ret = orig_has_changed()
-    if ret:
-        child = sp.Popen([sys.argv[0], 'check'], stdout=sp.PIPE)
-        streamdata = child.communicate()[0]
+    #if ret:
+    #    child = sp.Popen([sys.argv[0], 'check'], stdout=sp.PIPE)
+    #    streamdata = child.communicate()[0]
         #print streamdata
-        if child.returncode != 0:
-            sys.stderr.write("Error detected! Please correct the above errors before tests can resume!")
-            return False
+    #    if child.returncode != 0:
+    #        sys.stderr.write("Error detected! Please correct the above errors before tests can resume!")
+    #        return False
     return ret
 autoreload.code_changed = new_has_changed
 
@@ -43,6 +45,7 @@ class Command(BaseCommand):
         return get_runner(settings, options.get('testrunner'))
 
     def handle(self, *test_labels, **options):
+        self.app = apps.get_app_config('autotest')
         self.config = {}
 
         options['verbosity'] = int(options.get('verbosity'))
@@ -122,8 +125,13 @@ class Command(BaseCommand):
         if '*' in todo:
             todo = []
 
+        if not todo:
+            self.app.coverage_start()
+
         setup_test_environment()
+
         test_runner = self.TestRunner(**options)
+
         try:
             suite = test_runner.build_suite(todo, None)
         except ImportError:
@@ -134,11 +142,17 @@ class Command(BaseCommand):
             return self.ask_rerun()
 
         result = test_runner.run_suite(suite)
+
         teardown_test_environment()
+
+        if not todo:
+            self.app.coverage_report()
 
         failures = []
         for test, err in result.errors + result.failures:
             (name, module) = str(test).rsplit(')', 1)[0].split(' (')
+            if module == 'unittest.loader.ModuleImportFailure':
+                (module, name) = name.rsplit('.', 1)
             failures.append('%s.%s' % (module, name))
 
         if not failures:
