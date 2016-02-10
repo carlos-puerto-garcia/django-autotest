@@ -40,6 +40,7 @@ setup(
         platforms        = 'linux',
         license          = 'LGPLv3',
         packages         = find_packages(),
+        extras_require   = {'coverage': ['coverage>=4.0.3']},
         install_requires = [
           'django>=1.7.5',
         ],
