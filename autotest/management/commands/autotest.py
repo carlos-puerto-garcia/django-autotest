@@ -64,13 +64,8 @@ class Command(BaseCommand):
 
             settings.DEBUG = False
         else:
-            set_title('setup', **options)
-
-            # Make a module we can import and use to re-run at will
-            if not os.path.isdir(self.am_path):
-                os.makedirs(self.am_path)
-            with open(self.am_file, 'w') as fhl:
-                fhl.write("# Force tests to reload with this file\n")
+            set_title('setup')
+            self.poke_module()
 
             self.config = self.setup_databases(**options)
             self.save_config()
@@ -89,6 +84,13 @@ class Command(BaseCommand):
             autoreload.main(self.inner_run, test_labels, options)
         except OSError:
             print "Exiting autorun."
+
+    def poke_module(self):
+        """Make a module we can import and use to re-run tests any time"""
+        if not os.path.isdir(self.am_path):
+            os.makedirs(self.am_path)
+        with open(self.am_file, 'w') as fhl:
+            fhl.write("# Force tests to reload with this file\n")
 
     def save_config(self):
         """Output our current state as a json file"""
@@ -195,8 +197,7 @@ class Command(BaseCommand):
                 break
         self.save_config()
         if rerun != '-':
-            with open(self.am_file, 'a') as fhl:
-                fhl.write('#')
+            self.poke_module()
 
 def get_selection(rerun, failures):
     """Get's the selection from the user given response"""
