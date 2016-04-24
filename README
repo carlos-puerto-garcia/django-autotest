@@ -8,8 +8,6 @@ Description
 Provides the 'autotest' command which enhances django's built in test feature
 with the auto reload feature used in django's runserver command.
 
-Less than 150 lines of python total in this entire library!
-
 Installation
 ============
 
