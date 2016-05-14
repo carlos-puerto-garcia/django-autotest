@@ -291,6 +291,7 @@ class ExtraTestCase(TestCase):
 
         if 'form' in get.context_data:
             data = get.context_data['form'].initial
+            data = dict([(a,b) for (a,b) in data.items() if b])
             data.update(post_kw.pop('data', {}))
             post_kw['data'] = data
 
