@@ -31,6 +31,8 @@ import types
 import shutil
 import inspect
 
+from urllib import urlencode
+
 from os.path import basename, dirname, join, abspath, isfile
 from datetime import date
 from importlib import import_module
@@ -205,19 +207,33 @@ class ExtraTestCase(TestCase):
         return qs[0] if count == 1 else qs[:count]
 
     def assertGet(self, url_name, *arg, **kw):
-        """Make a generic GET request with the best options"""
+        """Make a generic GET request with the best options
+        
+        url_name - Either /path/ or url name of the request.
+        *args - Argument list to pass to the url reverse method.
+        **kw - Keyword Arguments to pass to the url reverse method.
+
+        query - Query string to append to the url (dictionary or url encoded string)
+        follow - Should redirects be followed (default True)
+        status - The Http status to expect (default: no-check)
+
+        Returns response.
+        """
         data = kw.pop('data', {})
         method = kw.pop('method', self.client.get)
         follow = kw.pop('follow', True)
         status = kw.pop('status', None)
-        get_param = kw.pop('get_param', None)
+        query = kw.pop('query', None)
 
-        if url_name[0] == '/':
+        if url_name[0] == '/' or '://' in url_name:
             url = url_name
         else:
             url = reverse(url_name, kwargs=kw, args=arg)
-        if get_param:
-            url += '?' + get_param
+
+        if isinstance(query, dict):
+            query = urlencode(query)
+        if query:
+            url += '?' + query
 
         response = method(url, data, follow=follow)
         if status:
@@ -225,7 +241,21 @@ class ExtraTestCase(TestCase):
         return response
 
     def assertPost(self, *arg, **kw):
-        """Make a generic POST request with the best options"""
+        """Make a generic POST request with the best options
+
+        url_name - Either /path/ or url name of the request.
+        *args - Argument list to pass to the url reverse method.
+        **kw - Keyword Arguments to pass to the url reverse method.
+        q - Query string to append to the url (dictionary or string)
+
+        follow - Should redirects be followed (default True)
+
+        status - The Http status to expect (default: no-check)
+        form_errors - A dictionary of expected errors (if any)
+        data - Post data to submit in the request
+
+        Returns response.
+        """
         errs = kw.pop('form_errors', None)
         kw['method'] = self.client.post
         response = self.assertGet(*arg, **kw)
@@ -245,12 +275,24 @@ class ExtraTestCase(TestCase):
     def assertBoth(self, *args, **kw):
         """
         Make a GET and POST request and expect the same status.
+
+        Feeds forum data from the GET into the POST, you can update this
+        dictionary as needed using the kwargs 'data' and look for
+        form_errors as in assertPost.
         
-        Teturns (get, post) response tuple
+        Returns (get, post) response tuple
+        
+        (see assertGet and assertPost for details)
         """
         post_kw = kw.copy()
         for key in ('form_errors', 'data'):
             kw.pop(key, None)
-        return (self.assertGet(*args, **kw),
-                self.assertPost(*args, **post_kw))
+        get = self.assertGet(*args, **kw)
+
+        if 'form' in get.context_data:
+            data = get.context_data['form'].initial
+            data.update(post_kw.pop('data', {}))
+            post_kw['data'] = data
+
+        return (get, self.assertPost(*args, **post_kw))
 
