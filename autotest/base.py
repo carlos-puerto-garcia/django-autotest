@@ -201,7 +201,8 @@ class ExtraTestCase(TestCase):
                 qs = qs.exclude(**{field[4:]: value})
 
         # Assert we have enough objects to return
-        self.assertGreater(qs.count(), count - 1)
+        self.assertGreater(qs.count(), count - 1,
+            "%d object(s) matching %s not found." % (count, str(kw)))
 
         # Return either one object or a list of objects limited to count
         return qs[0] if count == 1 else qs[:count]
