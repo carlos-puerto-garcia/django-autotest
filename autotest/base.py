@@ -95,7 +95,7 @@ class ExtraTestCase(TestCase):
         if not cls.media_root.endswith('_test'):
             cls.media_root += '_test'
         if not os.path.isdir(cls.media_root):
-            os.makedirs(media)
+            os.makedirs(cls.media_root)
         cls._et_overridden = override_settings(
             MEDIA_ROOT=cls.media_root,
         )
