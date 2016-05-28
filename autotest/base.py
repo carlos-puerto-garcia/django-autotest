@@ -52,35 +52,6 @@ try:
 except ImportError:
     haystack = None
 
-class HaystackMixin(object):
-    """Access haystack as if it were indexed and ready for your test"""
-    @classmethod
-    def setUpClass(cls):
-        super(HaystackMixin, cls).setUpClass()
-        cls._hs_overridden = override_settings(
-         HAYSTACK_CONNECTIONS={
-          'default': {
-            'ENGINE': 'haystack.backends.whoosh_backend.WhooshEngine',
-            'STORAGE': 'ram'
-          }
-        })
-        cls._hs_overridden.enable()
-
-    @classmethod
-    def tearDownClass(cls):
-        if hasattr(cls._hs_overridden, 'wrapper'):
-            cls._hs_overridden.disable()
-        super(HaystackMixin, cls).tearDownClass()
-
-    def setUp(self):
-        super(HaystackMixin, self).setUp()
-        haystack.connections.reload('default')
-        call_command('rebuild_index', interactive=False, verbosity=0)
-
-    def tearDown(self):
-        super(HaystackMixin, self).tearDown()
-        call_command('clear_index', interactive=False, verbosity=0)
-
 
 class ExtraTestCase(TestCase):
     """
@@ -96,8 +67,15 @@ class ExtraTestCase(TestCase):
             cls.media_root += '_test'
         if not os.path.isdir(cls.media_root):
             os.makedirs(cls.media_root)
+
         cls._et_overridden = override_settings(
             MEDIA_ROOT=cls.media_root,
+            HAYSTACK_CONNECTIONS={
+              'default': {
+                'ENGINE': 'haystack.backends.whoosh_backend.WhooshEngine',
+                'STORAGE': 'ram'
+              },
+            },
         )
         cls._et_overridden.enable()
 
@@ -297,4 +275,16 @@ class ExtraTestCase(TestCase):
             post_kw['data'] = data
 
         return (get, self.assertPost(*args, **post_kw))
+
+
+class HaystackTestCase(ExtraTestCase):
+    """Access haystack as if it were indexed and ready for your test"""
+    def setUp(self):
+        super(HaystackTestCase, self).setUp()
+        haystack.connections.reload('default')
+        call_command('rebuild_index', interactive=False, verbosity=0)
+
+    def tearDown(self):
+        super(HaystackTestCase, self).tearDown()
+        call_command('clear_index', interactive=False, verbosity=0)
 
