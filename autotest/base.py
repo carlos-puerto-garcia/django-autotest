@@ -59,6 +59,8 @@ class ExtraTestCase(TestCase):
     used in fixtures and provides an easy way to load files, objects and test
     GET and POST requests and their responses.
     """
+    override_settings = {}
+
     @classmethod
     def setUpClass(cls):
         super(ExtraTestCase, cls).setUpClass()
@@ -76,6 +78,7 @@ class ExtraTestCase(TestCase):
                 'STORAGE': 'ram'
               },
             },
+            **cls.override_settings
         )
         cls._et_overridden.enable()
 
@@ -232,16 +235,33 @@ class ExtraTestCase(TestCase):
         status - The Http status to expect (default: no-check)
         form_errors - A dictionary of expected errors (if any)
         data - Post data to submit in the request
+        form - Form to use as the basis for the data
+        get - Previous get request to find a form in for data.
 
         Returns response.
         """
+        get = kw.pop('get', None)
         errs = kw.pop('form_errors', None)
+
+        # Get a possible form from a previous get request
+        if get and 'form' in get.context_data:
+            kw['form'] = get.context_data['form']
+
+        # Use a previous form as a basis for the data
+        if 'form' in kw:
+            data = kw.pop('form').initial
+            data = dict([(a,b) for (a,b) in data.items() if b])
+            data.update(kw.pop('data', {}))
+            kw['data'] = data
+
         kw['method'] = self.client.post
         response = self.assertGet(*arg, **kw)
 
         if errs:
+            # Look for form errors and confirm them
             for (field, msg) in errs.items():
                 self.assertFormError(response, 'form', field, msg)
+
         elif response.context and 'form' in response.context:
             form = response.context['form']
             if 'status' in kw and kw['status'] == 200 and form:
@@ -267,13 +287,7 @@ class ExtraTestCase(TestCase):
         for key in ('form_errors', 'data'):
             kw.pop(key, None)
         get = self.assertGet(*args, **kw)
-
-        if 'form' in get.context_data:
-            data = get.context_data['form'].initial
-            data = dict([(a,b) for (a,b) in data.items() if b])
-            data.update(post_kw.pop('data', {}))
-            post_kw['data'] = data
-
+        post_kw['get'] = get
         return (get, self.assertPost(*args, **post_kw))
 
 
