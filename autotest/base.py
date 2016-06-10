@@ -244,7 +244,7 @@ class ExtraTestCase(TestCase):
         errs = kw.pop('form_errors', None)
 
         # Get a possible form from a previous get request
-        if get and 'form' in get.context_data:
+        if get and hasattr(get, 'context_data') and 'form' in get.context_data:
             kw['form'] = get.context_data['form']
 
         # Use a previous form as a basis for the data
