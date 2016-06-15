@@ -52,18 +52,24 @@ class Command(BaseCommand):
             os.environ[SRV_ADDR] = options['liveserver']
             del options['liveserver']
 
-        if os.path.isfile(self.config_file):
+        try:
+            assert(os.path.isfile(self.config_file))
             print "\n * Running tests!\n"
             from django.conf import settings
             with open(self.config_file, 'r') as fhl:
-                self.config = json.loads(fhl.read())
+                try:
+                    self.config = json.loads(fhl.read())
+                except ValueError:
+                    print(" {!} Broken state file from last run, deleting.")
+                    os.unlink(self.config_file)
+                    assert(False)
             for (orig_name, test_name) in self.config.get('db', {}).items():
                 for (_, conf) in settings.DATABASES.items():
                     if conf["NAME"] == orig_name:
                         conf["NAME"] = test_name
 
             settings.DEBUG = False
-        else:
+        except AssertionError, err:
             set_title('setup')
             self.poke_module()
 
