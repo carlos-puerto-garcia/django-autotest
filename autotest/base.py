@@ -296,7 +296,7 @@ class HaystackTestCase(ExtraTestCase):
     def setUp(self):
         super(HaystackTestCase, self).setUp()
         haystack.connections.reload('default')
-        call_command('rebuild_index', interactive=False, verbosity=0)
+        call_command('update_index', interactive=False, verbosity=0)
 
     def tearDown(self):
         super(HaystackTestCase, self).tearDown()
