@@ -155,12 +155,13 @@ class Command(BaseCommand):
         if not todo:
             self.app.coverage_report()
 
-        failures = []
+        failures = set()
         for test, _ in result.errors + result.failures:
             (name, module) = str(test).rsplit(')', 1)[0].split(' (')
             if module == 'unittest.loader.ModuleImportFailure':
                 (module, name) = name.rsplit('.', 1)
-            failures.append('%s.%s' % (module, name))
+            failures.add('%s.%s' % (module, name))
+        failures = list(failures)
 
         if not failures:
             if test_labels != todo:

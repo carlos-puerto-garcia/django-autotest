@@ -27,6 +27,7 @@ Some useful base test tools to help django testing.
 __unittest = True
 
 import os
+import sys
 import types
 import shutil
 import inspect
@@ -46,6 +47,8 @@ from django.core.files.base import File
 from django.conf import settings
 from django.contrib.auth import authenticate, login
 from django.http import HttpRequest
+
+from django.contrib.auth import get_user_model
 
 try:
     import haystack
@@ -81,12 +84,23 @@ class ExtraTestCase(TestCase):
             **cls.override_settings
         )
         cls._et_overridden.enable()
+        cls.app_dir = cls.get_app_dir()
+        cls.fixture_dir = os.path.join(cls.app_dir, 'fixtures')
+        cls.source_dir = os.path.join(cls.fixture_dir, 'media')
 
     @classmethod
     def tearDownClass(cls):
         if hasattr(cls._et_overridden, 'wrapper'):
             cls._et_overridden.disable()
         super(ExtraTestCase, cls).tearDownClass()
+
+    @classmethod
+    def get_app_dir(cls):
+        """Returns the root directory of an app based on the test case location"""
+        fn = dirname(inspect.getfile(cls))
+        if basename(fn) == 'tests':
+            return dirname(fn)
+        return fn
 
     def setUp(self):
         "Creates a dictionary containing a default post request for resources"
@@ -97,49 +111,16 @@ class ExtraTestCase(TestCase):
                 target = os.path.join(self.media_root, fname)
                 if not isfile(target) and isfile(source):
                     shutil.copy(source, target)
-        self.login(**getattr(self, 'credentials', {}))
 
-    def login(self, **credentials):
-        """Set session data regardless of being authenticated"""
-        engine = import_module(settings.SESSION_ENGINE)
         client = import_module(getattr(settings, 'SESSION_CLIENT', 'django.test.client'))
- 
+        kwargs = getattr(self, 'credentials', None)
+
         self.client = client.Client()
-
-        # Save new session in database and add cookie referencing it
-        request = HttpRequest()
-        request.session = engine.SessionStore('Python/2.7', '127.0.0.1')
-        request.session.save()
-
-        self.user = None
-        if credentials:
-            self.user = authenticate(**credentials)
-            login(request, self.user)
-            request.session.save()
-
-        # Set the cookie to represent the session.
-        session_cookie = settings.SESSION_COOKIE_NAME
-        self.client.cookies[session_cookie] = request.session.session_key
-        self.client.cookies[session_cookie].update({
-            'path': '/',
-            'domain': settings.SESSION_COOKIE_DOMAIN,
-            'secure': settings.SESSION_COOKIE_SECURE or None,
-            'expires': None,
-            'max-age': None,
-        })
-
-    @property
-    def app_dir(self):
-        """Returns the root directory of an app based on the test case location"""
-        fn = dirname(inspect.getfile(type(self)))
-        if basename(fn) == 'tests':
-            return dirname(fn)
-        return fn
-
-    @property
-    def source_dir(self):
-        """Return a fixtures media directory where files might be found"""
-        return os.path.join(self.app_dir, 'fixtures', 'media')
+        if kwargs is not None:
+            self.assertTrue(self.client.login(**kwargs))
+            self.user = get_user_model().objects.get(username=kwargs['username'])
+            self.request = self.client.request
+            self.session = self.client.session
 
     def open(self, filename, *args, **kw):
         """Opens a file relative to this test script.
@@ -219,7 +200,9 @@ class ExtraTestCase(TestCase):
 
         response = method(url, data, follow=follow)
         if status:
-            self.assertEqual(response.status_code, status)
+            self.assertEqual(response.status_code, status,
+                "URL '%s' returned %s, but we expected %s" % \
+                        (url, response.status_code, status))
         return response
 
     def assertPost(self, *arg, **kw):
@@ -289,6 +272,46 @@ class ExtraTestCase(TestCase):
         get = self.assertGet(*args, **kw)
         post_kw['get'] = get
         return (get, self.assertPost(*args, **post_kw))
+
+
+class MultipleFailureTestCase(ExtraTestCase):
+    """Each test function is treated as an iterator, returning multiple failures
+
+    You can raise a failure or error as usual for a single error.
+
+    Or you can yield errors as needed
+    """
+    def __call__(self, result=None):
+        """Wrapper for TestCase run to inject test call"""
+        self._innerMethodName = self._testMethodName
+        self._testMethodName = 'catch_test_call'
+        self._currentResult = result if result is not None else self.defaultTestResult()
+        super(MultipleFailureTestCase, self).__call__(result=result)
+        self._testMethodName = self._innerMethodName
+
+    def catch_test_call(self):
+        """
+        Called instead of test method and watches for a generator or iterator
+        """
+        innerMethod = getattr(self, self._innerMethodName)
+        ret = innerMethod()
+
+        if isinstance(ret, types.GeneratorType):
+	    ok = True
+            for name, failure in ret:
+                self._testMethodName = name
+                try:
+                    if failure is not None:
+                        ok = False
+                        raise failure
+                    self._currentResult.addSuccess(self)
+                except self.failureException:
+		    self._currentResult.addFailure(self, sys.exc_info())
+                except Exception:
+                    self._currentResult.addError(self, sys.exc_info())
+
+	    self.assertTrue(ok, "One or more sub-tests generated a failure.")
+        
 
 
 class HaystackTestCase(ExtraTestCase):
