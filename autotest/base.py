@@ -113,14 +113,15 @@ class ExtraTestCase(TestCase):
                     shutil.copy(source, target)
 
         client = import_module(getattr(settings, 'SESSION_CLIENT', 'django.test.client'))
-        kwargs = getattr(self, 'credentials', None)
-
         self.client = client.Client()
-        if kwargs is not None:
-            self.assertTrue(self.client.login(**kwargs))
-            self.user = get_user_model().objects.get(username=kwargs['username'])
+        self.user = None
+
+        if hasattr(self, 'credentials'):
+            self.assertTrue(self.client.login(**self.credentials))
             self.request = self.client.request
             self.session = self.client.session
+            self.user = get_user_model().objects.get(
+                    username=self.credentials['username'])
 
     def open(self, filename, *args, **kw):
         """Opens a file relative to this test script.
