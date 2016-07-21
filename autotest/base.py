@@ -38,6 +38,8 @@ from os.path import basename, dirname, join, abspath, isfile
 from datetime import date
 from importlib import import_module
 
+from unittest.case import SkipTest
+
 from django.test import TestCase
 from django.test.utils import override_settings
 
@@ -165,7 +167,7 @@ class ExtraTestCase(TestCase):
 
         # Assert we have enough objects to return
         self.assertGreater(qs.count(), count - 1,
-            "%d object(s) matching %s not found." % (count, str(kw)))
+            "%d object(s) matching %s not found." % (count, unicode(kw)))
 
         # Return either one object or a list of objects limited to count
         return qs[0] if count == 1 else qs[:count]
@@ -308,11 +310,18 @@ class MultipleFailureTestCase(ExtraTestCase):
                     self._currentResult.addSuccess(self)
                 except self.failureException:
 		    self._currentResult.addFailure(self, sys.exc_info())
+                except SkipTest as e:
+                    self._addSkip(self._currentResult, unicode(e))
                 except Exception:
                     self._currentResult.addError(self, sys.exc_info())
 
 	    self.assertTrue(ok, "One or more sub-tests generated a failure.")
         
+    def assertThenSkip(self, result, reason=None):
+        if not reason:
+            reason = "skipping test"
+        if result:
+            raise SkipTest(reason)
 
 
 class HaystackTestCase(ExtraTestCase):
