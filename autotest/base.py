@@ -67,7 +67,13 @@ class ExtraTestCase(TestCase):
     override_settings = {}
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls, *args, **kwargs):
+        tdir = dirname(inspect.getfile(cls))
+        cls.app_dir = dirname(tdir) if basename(tdir) == 'tests' else tdir
+        cls.fixture_dir = os.path.join(cls.app_dir, 'fixtures')
+        cls.source_dir = os.path.join(cls.fixture_dir, 'media')
+
+        super(TestCase, cls).setUpClass(*args, **kwargs)
         super(ExtraTestCase, cls).setUpClass()
         cls.media_root = settings.MEDIA_ROOT.rstrip('/')
         if not cls.media_root.endswith('_test'):
@@ -86,9 +92,6 @@ class ExtraTestCase(TestCase):
             **cls.override_settings
         )
         cls._et_overridden.enable()
-        cls.app_dir = cls.get_app_dir()
-        cls.fixture_dir = os.path.join(cls.app_dir, 'fixtures')
-        cls.source_dir = os.path.join(cls.fixture_dir, 'media')
 
     @classmethod
     def tearDownClass(cls):
@@ -99,10 +102,7 @@ class ExtraTestCase(TestCase):
     @classmethod
     def get_app_dir(cls):
         """Returns the root directory of an app based on the test case location"""
-        fn = dirname(inspect.getfile(cls))
-        if basename(fn) == 'tests':
-            return dirname(fn)
-        return fn
+        return cls.app_dir
 
     def setUp(self):
         "Creates a dictionary containing a default post request for resources"
@@ -175,7 +175,7 @@ class ExtraTestCase(TestCase):
     def assertGet(self, url_name, *arg, **kw):
         """Make a generic GET request with the best options
         
-        url_name - Either /path/ or url name of the request.
+        url_name - Direct /path/, url name or object of the request.
         *args - Argument list to pass to the url reverse method.
         **kw - Keyword Arguments to pass to the url reverse method.
 
@@ -191,7 +191,9 @@ class ExtraTestCase(TestCase):
         status = kw.pop('status', None)
         query = kw.pop('query', None)
 
-        if url_name[0] == '/' or '://' in url_name:
+        if isinstance(url_name, Model):
+            url = url_name.get_absolute_url()
+        elif url_name[0] == '/' or '://' in url_name:
             url = url_name
         else:
             url = reverse(url_name, kwargs=kw, args=arg)
