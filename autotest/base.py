@@ -43,6 +43,7 @@ from unittest.case import SkipTest
 from django.test import TestCase
 from django.test.utils import override_settings
 
+from django.db.models import Model
 from django.core.urlresolvers import reverse
 from django.core.management import call_command
 from django.core.files.base import File
