@@ -173,6 +173,14 @@ class ExtraTestCase(TestCase):
         # Return either one object or a list of objects limited to count
         return qs[0] if count == 1 else qs[:count]
 
+    def contextData(self, response, field, default=None):
+        """Returns a context data field from a response, returns default if provided."""
+        for i, context in enumerate(list(response.context or [])):
+            if field not in context:
+                continue
+            return context[field]
+        return default
+
     def assertGet(self, url_name, *arg, **kw):
         """Make a generic GET request with the best options
         
@@ -229,12 +237,13 @@ class ExtraTestCase(TestCase):
 
         Returns response.
         """
-        get = kw.pop('get', None)
-        errs = kw.pop('form_errors', None)
+        errs = kw.pop('form_errors', {})
 
         # Get a possible form from a previous get request
-        if get and hasattr(get, 'context_data') and 'form' in get.context_data:
-            kw['form'] = get.context_data['form']
+        if 'get' in kw:
+            form = self.contextData(kw.pop('get'), 'form')
+            if form is not None:
+                kw['form'] = form
 
         # Use a previous form as a basis for the data
         if 'form' in kw:
@@ -246,18 +255,17 @@ class ExtraTestCase(TestCase):
         kw['method'] = self.client.post
         response = self.assertGet(*arg, **kw)
 
-        if errs:
+        form = self.contextData(response, 'form')
+        if form is not None:
+            err_only = errs.pop('_default', 'No error specified.')
             # Look for form errors and confirm them
-            for (field, msg) in errs.items():
+            for field in form.errors:
+                msg = errs.pop(field, err_only)
+                if msg is not None:
+                    self.assertFormError(response, 'form', field, msg)
+            for field, msg in errs.items():
                 self.assertFormError(response, 'form', field, msg)
 
-        elif response.context and 'form' in response.context:
-            form = response.context['form']
-            if 'status' in kw and kw['status'] == 200 and form:
-                msg = ''
-                for field in form.errors:
-                    msg += "%s: %s\n" % (field, ','.join(form.errors[field]))
-                self.assertFalse(bool(form.errors), msg)
         return response
 
     def assertBoth(self, *args, **kw):
@@ -303,7 +311,7 @@ class MultipleFailureTestCase(ExtraTestCase):
         ret = innerMethod()
 
         if isinstance(ret, types.GeneratorType):
-	    ok = True
+            ok = True
             for name, failure in ret:
                 self._testMethodName = name
                 try:
@@ -312,13 +320,13 @@ class MultipleFailureTestCase(ExtraTestCase):
                         raise failure
                     self._currentResult.addSuccess(self)
                 except self.failureException:
-		    self._currentResult.addFailure(self, sys.exc_info())
+                    self._currentResult.addFailure(self, sys.exc_info())
                 except SkipTest as e:
                     self._addSkip(self._currentResult, unicode(e))
                 except Exception:
                     self._currentResult.addError(self, sys.exc_info())
 
-	    self.assertTrue(ok, "One or more sub-tests generated a failure.")
+            self.assertTrue(ok, "One or more sub-tests generated a failure.")
         
     def assertThenSkip(self, result, reason=None):
         if not reason:
