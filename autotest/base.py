@@ -74,8 +74,7 @@ class ExtraTestCase(TestCase):
         cls.fixture_dir = os.path.join(cls.app_dir, 'fixtures')
         cls.source_dir = os.path.join(cls.fixture_dir, 'media')
 
-        super(TestCase, cls).setUpClass(*args, **kwargs)
-        super(ExtraTestCase, cls).setUpClass()
+        super(ExtraTestCase, cls).setUpClass(*args, **kwargs)
         cls.media_root = settings.MEDIA_ROOT.rstrip('/')
         if not cls.media_root.endswith('_test'):
             cls.media_root += '_test'
