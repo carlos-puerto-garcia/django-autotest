@@ -120,7 +120,7 @@ class ExtraTestCase(TestCase):
         self.user = None
 
         if hasattr(self, 'credentials'):
-            self.assertTrue(self.client.login(**self.credentials))
+            self.assertTrue(self.client.login(**self.credentials), "User not logged in as expected")
             self.request = self.client.request
             self.session = self.client.session
             self.user = get_user_model().objects.get(
