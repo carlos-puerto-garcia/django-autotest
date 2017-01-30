@@ -161,7 +161,7 @@ class Command(BaseCommand):
             if module == 'unittest.loader.ModuleImportFailure':
                 (module, name) = name.rsplit('.', 1)
             failures.add('%s.%s' % (module, name))
-        failures = list(failures)
+        failures = sorted(list(failures))
 
         if not failures:
             if test_labels != todo:
