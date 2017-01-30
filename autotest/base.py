@@ -287,6 +287,12 @@ class ExtraTestCase(TestCase):
         post_kw['get'] = get
         return (get, self.assertPost(*args, **post_kw))
 
+    def assertThenSkip(self, result, reason=None):
+        if not reason:
+            reason = "skipping test"
+        if result:
+            raise SkipTest(reason)
+
 
 class MultipleFailureTestCase(ExtraTestCase):
     """Each test function is treated as an iterator, returning multiple failures
@@ -327,12 +333,6 @@ class MultipleFailureTestCase(ExtraTestCase):
                     self._currentResult.addError(self, sys.exc_info())
 
             self.assertTrue(ok, "One or more sub-tests generated a failure.")
-        
-    def assertThenSkip(self, result, reason=None):
-        if not reason:
-            reason = "skipping test"
-        if result:
-            raise SkipTest(reason)
 
 
 class HaystackTestCase(ExtraTestCase):
