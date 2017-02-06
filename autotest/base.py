@@ -109,17 +109,19 @@ class ExtraTestCase(TestCase):
         super(ExtraTestCase, self).setUp()
         if os.path.isdir(self.source_dir):
             for fname in os.listdir(self.source_dir):
-                source = os.path.join(self.source_dir, 'test', fname)
+                source = os.path.join(self.source_dir, fname)
                 target = os.path.join(self.media_root, fname)
                 if not isfile(target) and isfile(source):
                     shutil.copy(source, target)
 
-        client = import_module(getattr(settings, 'SESSION_CLIENT', 'django.test.client'))
+        client = import_module(getattr(
+            settings, 'SESSION_CLIENT', 'django.test.client'))
         self.client = client.Client()
         self.user = None
 
         if hasattr(self, 'credentials'):
-            self.assertTrue(self.client.login(**self.credentials), "User not logged in as expected")
+            self.assertTrue(self.client.login(**self.credentials),
+                    "User not logged in as expected")
             self.request = self.client.request
             self.session = self.client.session
             self.user = get_user_model().objects.get(
