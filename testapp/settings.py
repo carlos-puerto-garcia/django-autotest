@@ -3,16 +3,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'doesnt_exist',
-        'USER': 'nichq',
-        'PASSWORD': '123456',
-        'HOST': '127.0.0.1',
-        'PORT': '',
-    },
-    'extra': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'doesnt_exist.db',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     },
 }
 

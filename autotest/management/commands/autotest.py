@@ -14,6 +14,12 @@ from django.core.management.commands.test import Command as BaseCommand
 
 SRV_ADDR = 'DJANGO_LIVE_TEST_SERVER_ADDRESS'
 
+import platform
+PY3 = platform.python_version()[0] == '3'
+if PY3:
+    unicode = str
+    raw_input = input
+
 #
 # Monkey patch to test django is still working before reloading
 #
@@ -54,7 +60,7 @@ class Command(BaseCommand):
 
         try:
             assert(os.path.isfile(self.config_file))
-            print "\n * Running tests!\n"
+            print("\n * Running tests!\n")
             from django.conf import settings
             with open(self.config_file, 'r') as fhl:
                 try:
@@ -69,14 +75,14 @@ class Command(BaseCommand):
                         conf["NAME"] = test_name
 
             settings.DEBUG = False
-        except AssertionError, err:
+        except AssertionError as err:
             set_title('setup')
             self.poke_module()
 
             self.config = self.setup_databases(**options)
             self.save_config()
 
-            print "\n -= Testing Service Running; use [CTRL]+[C] to exit =-\n"
+            print("\n -= Testing Service Running; use [CTRL]+[C] to exit =-\n")
 
         sys.path.append(self.am_path)
         try:
@@ -89,7 +95,7 @@ class Command(BaseCommand):
         try:
             autoreload.main(self.inner_run, test_labels, options)
         except OSError:
-            print "Exiting autorun."
+            print("Exiting autorun.")
 
     def poke_module(self):
         """Make a module we can import and use to re-run tests any time"""
@@ -124,7 +130,7 @@ class Command(BaseCommand):
                 os.rmdir(name)
         test_runner = get_test_runner(**options)
         test_runner.teardown_databases(old_config)
-        print " +++ Test Service Finished"
+        print(" +++ Test Service Finished")
 
     def inner_run(self, *test_labels, **options):
         """Inside the re-running test processes, this is a thread"""
@@ -142,10 +148,10 @@ class Command(BaseCommand):
         try:
             suite = test_runner.build_suite(todo, None)
         except ImportError:
-            print "Error, selected test module can't be found: %s" % str(todo)
+            print("Error, selected test module can't be found: %s" % str(todo))
             return self.ask_rerun()
         except AttributeError:
-            print "Error, selected test function can't be found: %s" % str(todo)
+            print("Error, selected test function can't be found: %s" % str(todo))
             return self.ask_rerun()
 
         result = test_runner.run_suite(suite)
@@ -178,7 +184,7 @@ class Command(BaseCommand):
                 self.save_config()
             else:
                 set_title('PASS')
-                print "\nStill working!\n"
+                print("\nStill working!\n")
             return self.ask_rerun()
 
         # Add all failues to next todo list (for re-run)
@@ -238,5 +244,5 @@ def print_failures(failures):
     # Print options for user to select test target but
     # also set all failed tests as targets
     for enum, test in enumerate(failures):
-        print "  %d. %s " % (enum + 1, test)
+        print("  %d. %s " % (enum + 1, test))
 
