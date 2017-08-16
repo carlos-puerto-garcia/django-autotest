@@ -48,7 +48,6 @@ from django.core.urlresolvers import reverse
 from django.core.management import call_command
 from django.core.files.base import File
 from django.conf import settings
-from django.contrib.auth import authenticate, login
 from django.http import HttpRequest
 
 from django.contrib.auth import get_user_model
