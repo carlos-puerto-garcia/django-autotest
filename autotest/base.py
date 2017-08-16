@@ -195,15 +195,17 @@ class ExtraTestCase(TestCase):
         **kw - Keyword Arguments to pass to the url reverse method.
 
         query - Query string to append to the url (dictionary or url encoded string)
-        follow - Should redirects be followed (default True)
+        follow - Should redirects be followed (default True, except if status is 3XX)
         status - The Http status to expect (default: no-check)
 
         Returns response.
         """
         data = kw.pop('data', {})
         method = kw.pop('method', self.client.get)
-        follow = kw.pop('follow', True)
         status = kw.pop('status', None)
+        # The default for follow should be logically consistant with the status
+        # If we know the status is a 301/302 etc, then we shouldn't follow it!
+        follow = kw.pop('follow', (not status or str(status)[0] != '3'))
         query = kw.pop('query', None)
 
         if isinstance(url_name, Model):
