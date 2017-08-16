@@ -100,7 +100,7 @@ class ExtraTestCase(TestCase):
 
     @classmethod
     def get_app_dir(cls):
-        """Returns the root directory of an app based on the test case location"""
+        "Returns the root directory of an app based on the test case location"
         return cls.app_dir
 
     def setUp(self):
@@ -119,12 +119,16 @@ class ExtraTestCase(TestCase):
         self.user = None
 
         if hasattr(self, 'credentials'):
-            self.assertTrue(self.client.login(**self.credentials),
-                    "User not logged in as expected")
+            pwd = self.credentials.copy()
+            self.user = get_user_model().objects.get(username=pwd['username'])
+            if pwd.get('password', None) is True:
+                pwd['password'] = '123456'
+                self.user.is_active = True
+                self.user.set_password(pwd['password'])
+                self.user.save()
+            self.assertTrue(self.client.login(**pwd), "User login failed")
             self.request = self.client.request
             self.session = self.client.session
-            self.user = get_user_model().objects.get(
-                    username=self.credentials['username'])
 
     def open(self, filename, *args, **kw):
         """Opens a file relative to this test script.
