@@ -50,6 +50,7 @@ from django.core.files.base import File
 from django.conf import settings
 from django.http import HttpRequest
 
+from django.contrib.messages import get_messages
 from django.contrib.auth import get_user_model
 
 try:
@@ -294,6 +295,10 @@ class ExtraTestCase(TestCase):
         get = self.assertGet(*args, **kw)
         post_kw['get'] = get
         return (get, self.assertPost(*args, **post_kw))
+
+    def assertMessage(self, response, expected, message=None):
+        self.assertIn(expected, "\n".join([str(msg)
+            for msg in get_messages(response.wsgi_request)]), message)
 
     def assertThenSkip(self, result, reason=None):
         if not reason:
