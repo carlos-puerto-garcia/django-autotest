@@ -96,6 +96,8 @@ class ExtraTestCase(TestCase):
     def tearDownClass(cls):
         if hasattr(cls._et_overridden, 'wrapper'):
             cls._et_overridden.disable()
+        if os.path.isdir(cls.media_root):
+            shutil.rmtree(cls.media_root)
         super(ExtraTestCase, cls).tearDownClass()
 
     @classmethod
